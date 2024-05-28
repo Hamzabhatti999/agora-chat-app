@@ -10,7 +10,6 @@ import AgoraRTC, {
   useRemoteAudioTracks,
   useConnectionState,
 } from "agora-rtc-react";
-import { IMicrophoneAudioTrack, ICameraVideoTrack } from "agora-rtc-react";
 
 interface Props {
   token: string;
@@ -35,7 +34,13 @@ const VideoCall = ({ token, channel }: Props) => {
     token: token,
     channel: channel,
   });
-
+  useEffect(() => {
+    return () => {
+      localCameraTrack?.close();
+      localMicrophoneTrack?.close();
+    };
+  }, []);
+  console.log("channel data -----", data);
   const handleEndCall = () => {
     if (localCameraTrack) localCameraTrack.close();
     if (localMicrophoneTrack) localMicrophoneTrack.close();

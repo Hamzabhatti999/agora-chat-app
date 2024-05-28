@@ -1,5 +1,5 @@
 "use client";
-import AgoraRTC, { AgoraRTCProvider, SDK_MODE } from "agora-rtc-react";
+import AgoraRTC, { AgoraRTCProvider } from "agora-rtc-react";
 import React from "react";
 export default function AgoraProvider({
   children,
