@@ -20,63 +20,50 @@ interface Props {
 const appID = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
 
 const VideoCall = ({ token, channel }: Props) => {
-  const [localAudioTrack, setLocalAudioTrack] =
-    useState<IMicrophoneAudioTrack | null>(null);
-  const [localVideoTrack, setLocalVideoTrack] =
-    useState<ICameraVideoTrack | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-
+  const { isLoading: isLoadingCam, localCameraTrack } = useLocalCameraTrack();
+  const { isLoading: isLoadingMic, localMicrophoneTrack } =
+    useLocalMicrophoneTrack();
   const remoteUsers = useRemoteUsers();
+  const [role, setRole] = useState("host"); // Default role is host
+
+  // Publish local tracks
+  usePublish([localMicrophoneTrack, localCameraTrack]);
   const { data, isLoading, error, isConnected } = useJoin({
     appid: appID,
     token: token,
     channel: channel,
   });
 
-  useEffect(() => {
-    const getLocalTracks = async () => {
-      const [microphoneTrack, cameraTrack] = await Promise.all([
-        AgoraRTC.createMicrophoneAudioTrack(),
-        AgoraRTC.createCameraVideoTrack(),
-      ]);
-      setLocalAudioTrack(microphoneTrack);
-      setLocalVideoTrack(cameraTrack);
-    };
-    getLocalTracks();
-
-    return () => {
-      localAudioTrack?.close();
-      localVideoTrack?.close();
-    };
-  }, [isConnected]);
-
   const handleEndCall = () => {
-    if (localAudioTrack) localAudioTrack.close();
-    if (localVideoTrack) localVideoTrack.close();
+    if (localCameraTrack) localCameraTrack.close();
+    if (localMicrophoneTrack) localMicrophoneTrack.close();
     window.location.reload(); // Simple way to leave and reset the call
   };
 
   const handleMute = () => {
     setIsMuted(!isMuted);
-    if (localAudioTrack) {
-      localAudioTrack.setEnabled(isMuted);
+    if (localMicrophoneTrack) {
+      localMicrophoneTrack.setEnabled(isMuted);
     }
   };
 
   const handleToggleVideo = () => {
     setIsVideoOff(!isVideoOff);
-    if (localVideoTrack) localVideoTrack.setEnabled(isVideoOff);
+    if (localCameraTrack) localCameraTrack.setEnabled(isVideoOff);
   };
-
   return (
     <div className="flex flex-col items-center space-y-4 p-4">
       <div className="relative w-96 h-80 bg-gray-700">
-        {localVideoTrack && (
+        {(isLoadingCam || isLoadingMic || isLoading) && (
+          <div className="mt-5 text-center text-white">loading.....</div>
+        )}
+        {localCameraTrack && (
           <video
             ref={(element) => {
-              if (element && localVideoTrack) {
-                localVideoTrack.play(element);
+              if (element && localCameraTrack) {
+                localCameraTrack.play(element);
               }
             }}
             className="w-full h-full"
