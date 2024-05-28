@@ -1,15 +1,35 @@
-import React from "react";
-import VideoCall from "./videoCall";
+"use client";
+import React, { useState } from "react";
+import dynamic from "next/dynamic";
+import axios from "axios";
+import Videos from "./videoComponent";
+const HomePage = () => {
+  const [inCall, setInCall] = useState(false);
+  const [token, setToken] = useState<string>("");
 
-const Home = () => {
+  const generateToken = async () => {
+    const response = await axios.post("/api/channel", {
+      channelName: "Arrived",
+    });
+    setToken(response.data.token);
+  };
+
+  const handleJoin = async () => {
+    await generateToken();
+    setInCall(true);
+  };
+
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-3xl font-bold mb-6">
-        Agora Audio and Video Calling App
-      </h1>
-      <VideoCall />
-    </main>
+    <div>
+      {inCall ? (
+        <Videos token={token} />
+      ) : (
+        <div>
+          <button onClick={handleJoin}>Join Call</button>
+        </div>
+      )}
+    </div>
   );
 };
 
-export default Home;
+export default HomePage;
