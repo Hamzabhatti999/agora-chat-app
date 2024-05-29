@@ -6,8 +6,10 @@ import AgoraRTC, {
   useLocalCameraTrack,
   useLocalMicrophoneTrack,
   usePublish,
+  RemoteUser,
   useRemoteUsers,
   useRemoteAudioTracks,
+  useRemoteVideoTracks,
   useConnectionState,
 } from "agora-rtc-react";
 
@@ -25,8 +27,10 @@ const VideoCall = ({ token, channel }: Props) => {
   const { isLoading: isLoadingMic, localMicrophoneTrack } =
     useLocalMicrophoneTrack();
   const remoteUsers = useRemoteUsers();
+  const { audioTracks } = useRemoteAudioTracks(remoteUsers);
+  const { videoTracks } = useRemoteVideoTracks(remoteUsers);
   const [role, setRole] = useState("host"); // Default role is host
-
+  console.log("--remoteUsers-==================", remoteUsers);
   // Publish local tracks
   usePublish([localMicrophoneTrack, localCameraTrack]);
   const { data, isLoading, error, isConnected } = useJoin({
@@ -40,6 +44,7 @@ const VideoCall = ({ token, channel }: Props) => {
       localMicrophoneTrack?.close();
     };
   }, []);
+  audioTracks.map((track) => track.play());
   console.log("channel data -----", data);
   const handleEndCall = () => {
     if (localCameraTrack) localCameraTrack.close();
@@ -59,8 +64,8 @@ const VideoCall = ({ token, channel }: Props) => {
     if (localCameraTrack) localCameraTrack.setEnabled(isVideoOff);
   };
   return (
-    <div className="flex flex-col items-center space-y-4 p-4">
-      <div className="relative w-96 h-80 bg-gray-700">
+    <div className="flex flex-col justify-center items-center gap-4 p-4 bg-black">
+      <div className="relative w-96 h-80 bg-gray-600">
         {(isLoadingCam || isLoadingMic || isLoading) && (
           <div className="mt-5 text-center text-white">loading.....</div>
         )}
@@ -169,10 +174,11 @@ const VideoCall = ({ token, channel }: Props) => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {remoteUsers.map((user) => (
-          <div key={user.uid} className="relative w-80 h-60 bg-black">
-            {user.videoTrack && (
+      <div className="relative ">
+        {remoteUsers.map((user, index) => (
+          <div key={index} className="relative w-96 h-80 bg-gray-600">
+            <RemoteUser key={index} user={user} />
+            {/* {user.videoTrack && (
               <video
                 ref={(element) => {
                   if (element && user.videoTrack) {
@@ -183,7 +189,7 @@ const VideoCall = ({ token, channel }: Props) => {
                 autoPlay
                 playsInline
               ></video>
-            )}
+            )} */}
           </div>
         ))}
       </div>
