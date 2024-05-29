@@ -10,7 +10,6 @@ import AgoraRTC, {
   useRemoteUsers,
   useRemoteAudioTracks,
   useRemoteVideoTracks,
-  useConnectionState,
 } from "agora-rtc-react";
 
 interface Props {
