@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
             const { channelName } = req.body;
             const agoraToken = RtcTokenBuilder.buildTokenWithUid(
-                agoraAppId!, agoraAppCertificate!, channelName, 0, RtcRole.PUBLISHER, 3600, 3660 * 5
+                agoraAppId!, agoraAppCertificate!, channelName, 0, RtcRole.PUBLISHER, 1000, 1200
             )
             res.json({ status: 200, token: agoraToken })
         } catch (error: any) {

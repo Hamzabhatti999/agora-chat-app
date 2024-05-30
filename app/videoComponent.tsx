@@ -1,6 +1,5 @@
-// components/VideoCall.tsx
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AgoraRTC, {
   useJoin,
   useLocalCameraTrack,
@@ -9,16 +8,16 @@ import AgoraRTC, {
   RemoteUser,
   useRemoteUsers,
   useRemoteAudioTracks,
-  useRemoteVideoTracks,
+  useClientEvent,
+  useRTCClient,
+  IAgoraRTCRemoteUser,
 } from "agora-rtc-react";
 
 interface Props {
   token: string;
   channel: string;
 }
-
 const appID = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
-
 const VideoCall = ({ token, channel }: Props) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -27,24 +26,21 @@ const VideoCall = ({ token, channel }: Props) => {
     useLocalMicrophoneTrack();
   const remoteUsers = useRemoteUsers();
   const { audioTracks } = useRemoteAudioTracks(remoteUsers);
-  const { videoTracks } = useRemoteVideoTracks(remoteUsers);
-  const [role, setRole] = useState("host"); // Default role is host
-  console.log("--remoteUsers-==================", remoteUsers);
-  // Publish local tracks
-  usePublish([localMicrophoneTrack, localCameraTrack]);
+  const [role, setRole] = useState("host");
+  const client = useRTCClient();
+  usePublish([localMicrophoneTrack, localCameraTrack]); // Publish user local tracks
+  const [message, setMessage] = useState<string | null>(null);
+  const messageTimeout = useRef<NodeJS.Timeout | null>(null);
   const { data, isLoading, error, isConnected } = useJoin({
     appid: appID,
     token: token,
     channel: channel,
   });
-  useEffect(() => {
-    return () => {
-      localCameraTrack?.close();
-      localMicrophoneTrack?.close();
-    };
-  }, []);
+  console.log(
+    "------------------------------------------------------",
+    message
+  );
   audioTracks.map((track) => track.play());
-  console.log("channel data -----", data);
   const handleEndCall = () => {
     if (localCameraTrack) localCameraTrack.close();
     if (localMicrophoneTrack) localMicrophoneTrack.close();
@@ -62,11 +58,54 @@ const VideoCall = ({ token, channel }: Props) => {
     setIsVideoOff(!isVideoOff);
     if (localCameraTrack) localCameraTrack.setEnabled(isVideoOff);
   };
+  const handleUserJoined = (user: IAgoraRTCRemoteUser) => {
+    // console.log("User joined:", user);
+    setMessage(`${user.uid} Joined`);
+  };
+  const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
+    // console.log("User Left:", user);
+    setMessage(`${user.uid} Left Meeting`);
+  };
+  const handleTokenWillExpire = () => {
+    // console.log("Token privilege will expire soon. Please renew the token.");
+    setMessage("Your Meeting Wil End Soon");
+    // Here you should renew the token and update the client
+  };
+  useClientEvent(client, "connection-state-change", () =>
+    console.log("Connection Successfull")
+  );
+  useClientEvent(client, "user-left", handleUserLeft);
+  useClientEvent(client, "user-joined", handleUserJoined);
+  useClientEvent(client, "token-privilege-will-expire", handleTokenWillExpire);
+
+  useEffect(() => {
+    return () => {
+      localCameraTrack?.close();
+      localMicrophoneTrack?.close();
+    };
+  }, []);
+  useEffect(() => {
+    if (message) {
+      if (messageTimeout.current) {
+        clearTimeout(messageTimeout.current);
+      }
+      messageTimeout.current = setTimeout(() => {
+        setMessage(null);
+      }, 5000); // 5 seconds
+    }
+  }, [message]);
   return (
     <div className="flex flex-col justify-center items-center gap-4 p-4 bg-black">
       <div className="relative w-96 h-80 bg-gray-600">
         {(isLoadingCam || isLoadingMic || isLoading) && (
           <div className="mt-5 text-center text-white">loading.....</div>
+        )}
+        {message && (
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 flex z-50 items-center justify-center transition-opacity duration-500 opacity-100">
+            <p className="bg-white bg-opacity-100 text-black text-sm font-semibold p-2 rounded">
+              {message}
+            </p>
+          </div>
         )}
         {localCameraTrack && (
           <video
@@ -75,7 +114,7 @@ const VideoCall = ({ token, channel }: Props) => {
                 localCameraTrack.play(element);
               }
             }}
-            className="w-full h-full"
+            className="w-full h-full object-cover"
             autoPlay
             playsInline
           ></video>
