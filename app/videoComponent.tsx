@@ -21,6 +21,7 @@ const appID = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
 const VideoCall = ({ token, channel }: Props) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [recording, setRecording] = useState(false);
   const { isLoading: isLoadingCam, localCameraTrack } = useLocalCameraTrack();
   const { isLoading: isLoadingMic, localMicrophoneTrack } =
     useLocalMicrophoneTrack();
@@ -119,6 +120,12 @@ const VideoCall = ({ token, channel }: Props) => {
             playsInline
           ></video>
         )}
+        {recording === true && (
+          <img
+            src="recorder.gif"
+            className="absolute top-1/3 right-0 w-8 transform -translate-x-1/2 flex z-50 items-center justify-center"
+          />
+        )}
         <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-2">
           <button
             onClick={handleEndCall}
@@ -209,6 +216,12 @@ const VideoCall = ({ token, channel }: Props) => {
                 />
               </svg>
             )}
+          </button>
+          <button
+            onClick={() => setRecording(!recording)}
+            className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center"
+          >
+            {recording ? <p>Stop</p> : <p>Start</p>}
           </button>
         </div>
       </div>
