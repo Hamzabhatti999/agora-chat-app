@@ -25,6 +25,10 @@ const VideoCall = ({ token, channel }: Props) => {
   const { isLoading: isLoadingCam, localCameraTrack } = useLocalCameraTrack();
   const { isLoading: isLoadingMic, localMicrophoneTrack } =
     useLocalMicrophoneTrack();
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const remoteUsers = useRemoteUsers();
   const { audioTracks } = useRemoteAudioTracks(remoteUsers);
   const [role, setRole] = useState("host");
@@ -37,10 +41,7 @@ const VideoCall = ({ token, channel }: Props) => {
     token: token,
     channel: channel,
   });
-  console.log(
-    "------------------------------------------------------",
-    message
-  );
+
   audioTracks.map((track) => track.play());
   const handleEndCall = () => {
     if (localCameraTrack) localCameraTrack.close();
@@ -78,7 +79,63 @@ const VideoCall = ({ token, channel }: Props) => {
   useClientEvent(client, "user-left", handleUserLeft);
   useClientEvent(client, "user-joined", handleUserJoined);
   useClientEvent(client, "token-privilege-will-expire", handleTokenWillExpire);
+  const handleDataAvailable = (event: BlobEvent) => {
+    if (event.data.size > 0) {
+      setRecordedChunks((prev) => [...prev, event.data]);
+    }
+  };
 
+  const handleStopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+    }
+  };
+
+  const handleStartRecording = () => {
+    if (localCameraTrack && localMicrophoneTrack) {
+      const cameraStream = new MediaStream([
+        localCameraTrack.getMediaStreamTrack(),
+      ]);
+      const micStream = new MediaStream([
+        localMicrophoneTrack.getMediaStreamTrack(),
+      ]);
+      const combinedStream = new MediaStream([
+        ...cameraStream.getTracks(),
+        ...micStream.getTracks(),
+      ]);
+      const options = {
+        mimeType: "video/webm; codecs=vp9",
+        audioBitsPerSecond: 128000, // Customize as needed
+        videoBitsPerSecond: 2500000, // Customize as needed
+        bitsPerSecond: 2628000, // Customize as needed
+      };
+      const recorder = new MediaRecorder(combinedStream, options);
+      recorder.ondataavailable = handleDataAvailable;
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: "video/mp4" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "recording.mp4";
+        a.click();
+        URL.revokeObjectURL(url);
+        setRecordedChunks([]);
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    }
+  };
+  console.log("media -------------", mediaRecorder);
+  const toggleRecording = () => {
+    if (recording) {
+      handleStopRecording();
+      setRecording(false);
+    } else {
+      handleStartRecording();
+    }
+  };
   useEffect(() => {
     return () => {
       localCameraTrack?.close();
@@ -218,7 +275,7 @@ const VideoCall = ({ token, channel }: Props) => {
             )}
           </button>
           <button
-            onClick={() => setRecording(!recording)}
+            onClick={toggleRecording}
             className="bg-gray-500 text-white px-4 py-2 rounded-lg flex items-center"
           >
             {recording ? <p>Stop</p> : <p>Start</p>}
